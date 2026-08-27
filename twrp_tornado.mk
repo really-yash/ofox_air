@@ -1,30 +1,24 @@
 #
-# Copyright (C) 2017-2023 The Android Open Source Project
-# Copyright (C) 2014-2023 The Team Win LLC
+# Copyright (C) 2026 The TWRP Open Source Project
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# Inherit from core products
-$(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
-$(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_base.mk)
-
-# Inherit from vendor configuration
-$(call inherit-product-if-exists, vendor/recovery/config/common.mk)
-$(call inherit-product-if-exists, vendor/twrp/config/common.mk)
-$(call inherit-product-if-exists, vendor/fox/config/common.mk)
-$(call inherit-product-if-exists, vendor/omni/config/common.mk)
-$(call inherit-product-if-exists, vendor/orangefox/config/common.mk)
-
-# Device identifier
-BOARD_VENDOR := xiaomi
-PRODUCT_DEVICE := tornado
-PRODUCT_NAME := twrp_tornado
-PRODUCT_BRAND := Redmi
-PRODUCT_MODEL := Redmi 15C 5G
-PRODUCT_MANUFACTURER := Xiaomi
-
 # Device path for OEM device tree
-DEVICE_PATH := device/xiaomi/tornado
+DEVICE_PATH := device/xiaomi/air
 
 # Inherit from hardware-specific part of the product configuration
 $(call inherit-product, $(DEVICE_PATH)/device.mk)
+
+# Inherit any OrangeFox-specific settings
+$(call inherit-product-if-exists, $(DEVICE_PATH)/fox_air.mk)
+
+# Inherit some common TWRP stuff.
+$(call inherit-product, vendor/twrp/config/common.mk)
+
+
+## Device identifier. This must come after all inclusions
+PRODUCT_NAME := twrp_air
+PRODUCT_DEVICE := air
+PRODUCT_BRAND := Redmi
+PRODUCT_MODEL := 23124RN87G
+PRODUCT_MANUFACTURER := Xiaomi
