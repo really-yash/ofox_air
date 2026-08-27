@@ -1,0 +1,53 @@
+name: 🦊 Transform Tornado to Air (Run Once)
+on:
+  workflow_dispatch:
+
+jobs:
+  transform:
+    name: Auto-Rename and Swap Files
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Your Repository
+        uses: actions/checkout@v4
+
+      - name: 1. Rename Makefiles (tornado -> air)
+        run: |
+          if [ -f "twrp_tornado.mk" ]; then mv twrp_tornado.mk twrp_air.mk; fi
+          if [ -f "omni_tornado.mk" ]; then mv omni_tornado.mk omni_air.mk; fi
+          if [ -f "aosp_tornado.mk" ]; then mv aosp_tornado.mk aosp_air.mk; fi
+
+      - name: 2. Text Find & Replace (Inside all files)
+        run: |
+          # This scans every file (skipping .git) and rewrites the codenames
+          find . -type f -not -path '*/\.git/*' -exec sed -i 's/tornado/air/g' {} +
+          find . -type f -not -path '*/\.git/*' -exec sed -i 's/Tornado/Air/g' {} +
+          find . -type f -not -path '*/\.git/*' -exec sed -i 's/TORNADO/AIR/g' {} +
+
+      - name: 3. Steal Hardware Drivers & Kernel from Suchit's repo
+        run: |
+          echo "Cloning Suchit's fox_air repo to a temp folder..."
+          git clone https://github.com/suchit-7x/fox_air.git /tmp/fox_air
+          
+          echo "Swapping Kernel and DTB files..."
+          mkdir -p prebuilt
+          cp /tmp/fox_air/prebuilt/kernel prebuilt/kernel || true
+          cp /tmp/fox_air/prebuilt/dtbo.img prebuilt/dtbo.img || true
+          cp /tmp/fox_air/prebuilt/*.dtb prebuilt/ || true
+
+          echo "Swapping Touchscreen modules..."
+          mkdir -p recovery/root/lib/modules
+          rm -rf recovery/root/lib/modules/*
+          cp -r /tmp/fox_air/recovery/root/lib/modules/* recovery/root/lib/modules/ || true
+          
+          echo "Cleaning up any old sbin folders..."
+          rm -rf recovery/root/sbin
+
+      - name: 4. Commit and Push Changes to Your Repo
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "🦊 Auto-Transformed: Tornado tree converted to Air with modules and kernel swapped"
+          git push
