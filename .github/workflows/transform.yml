@@ -1,53 +1,78 @@
-name: 🦊 Transform Tornado to Air (Run Once)
+name: 🦊 Native OrangeFox 14.1 (Air)
 on:
   workflow_dispatch:
 
 jobs:
-  transform:
-    name: Auto-Rename and Swap Files
+  build:
+    name: 🦊 Building OrangeFox Recovery
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
-      - name: Checkout Your Repository
+      - name: Checkout Device Tree
         uses: actions/checkout@v4
+        with:
+          path: device/xiaomi/air
 
-      - name: 1. Rename Makefiles (tornado -> air)
-        run: |
-          if [ -f "twrp_tornado.mk" ]; then mv twrp_tornado.mk twrp_air.mk; fi
-          if [ -f "omni_tornado.mk" ]; then mv omni_tornado.mk omni_air.mk; fi
-          if [ -f "aosp_tornado.mk" ]; then mv aosp_tornado.mk aosp_air.mk; fi
+      - name: Free up disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: false
 
-      - name: 2. Text Find & Replace (Inside all files)
-        run: |
-          # This scans every file (skipping .git) and rewrites the codenames
-          find . -type f -not -path '*/\.git/*' -exec sed -i 's/tornado/air/g' {} +
-          find . -type f -not -path '*/\.git/*' -exec sed -i 's/Tornado/Air/g' {} +
-          find . -type f -not -path '*/\.git/*' -exec sed -i 's/TORNADO/AIR/g' {} +
+      - name: Set up 16GB Swap Space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 16
 
-      - name: 3. Steal Hardware Drivers & Kernel from Suchit's repo
+      - name: Install Build Dependencies
         run: |
-          echo "Cloning Suchit's fox_air repo to a temp folder..."
-          git clone https://github.com/suchit-7x/fox_air.git /tmp/fox_air
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+
+      - name: Sync OrangeFox 14.1 Manifest
+        run: |
+          mkdir workspace
+          cd workspace
+          git config --global user.name "Yash"
+          git config --global user.email "bloxfruits_yash@example.com"
+          ~/bin/repo init -u https://gitlab.com/OrangeFox/sync.git -b 14.1 --depth=1
+          ~/bin/repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+
+      - name: Move Device Tree to Workspace
+        run: |
+          cp -r device/* workspace/device/
+
+      - name: Bypass VINTF Missing Kernel Panic
+        run: |
+          echo "Silently stripping kernel requirements so Android 14 builder doesn't crash..."
+          sed -i 's/^TARGET_PREBUILT_KERNEL/#TARGET_PREBUILT_KERNEL/g' workspace/device/xiaomi/air/BoardConfig.mk
+
+      - name: Build OrangeFox vendor_boot.img
+        run: |
+          cd workspace
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER=1
+          export LC_ALL="C"
+          export VINTF_ENFORCE=false
           
-          echo "Swapping Kernel and DTB files..."
-          mkdir -p prebuilt
-          cp /tmp/fox_air/prebuilt/kernel prebuilt/kernel || true
-          cp /tmp/fox_air/prebuilt/dtbo.img prebuilt/dtbo.img || true
-          cp /tmp/fox_air/prebuilt/*.dtb prebuilt/ || true
-
-          echo "Swapping Touchscreen modules..."
-          mkdir -p recovery/root/lib/modules
-          rm -rf recovery/root/lib/modules/*
-          cp -r /tmp/fox_air/recovery/root/lib/modules/* recovery/root/lib/modules/ || true
+          source build/envsetup.sh
+          # Android 14 Lunch fallbacks
+          lunch twrp_air-ap2a-eng || lunch twrp_air-ap3a-eng || lunch twrp_air-eng
           
-          echo "Cleaning up any old sbin folders..."
-          rm -rf recovery/root/sbin
+          # Max speed build!
+          mka adbd vendorbootimage BOARD_KERNEL_VERSION="6.1" -j$(nproc --all)
 
-      - name: 4. Commit and Push Changes to Your Repo
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "🦊 Auto-Transformed: Tornado tree converted to Air with modules and kernel swapped"
-          git push
+      - name: Upload vendor_boot.img Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrangeFox-air-vendor_boot
+          path: workspace/out/target/product/air/vendor_boot.img
