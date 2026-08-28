@@ -1,4 +1,4 @@
-name: Extract and Commit Prebuilts
+name: Extract Kernel and Modules (Air)
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y aria2 p7zip-full cpio
+          sudo apt-get update && sudo apt-get install -y aria2 p7zip-full cpio lz4
           wget https://github.com/ssut/payload-dumper-go/releases/download/1.2.2/payload-dumper-go_1.2.2_linux_amd64.tar.gz
           tar -xf payload-dumper-go_1.2.2_linux_amd64.tar.gz
           sudo cp payload-dumper-go /usr/local/bin/
@@ -29,23 +29,43 @@ jobs:
           aria2c -x 16 -s 16 -k 1M --file-allocation=none -o rom.zip "https://bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.aliyuncs.com/OS2.0.208.0.VGQINXM/air_in_global-ota_full-OS2.0.208.0.VGQINXM-user-15.0-93391672cc.zip"
           unzip -q rom.zip payload.bin
 
-      - name: Dump Partitions & Extract Kernel
+      - name: Dump Partitions & Extract Kernel + Modules
         run: |  
-          payload-dumper-go -o dumped_images -p boot,dtbo payload.bin  
+          payload-dumper-go -o dumped_images -p boot,dtbo,vendor_boot payload.bin  
           
-          # Match the exact device path structure for your repo
-          mkdir -p device/xiaomi/air/prebuilt
+          echo "1. Moving DTBO..."
+          mkdir -p prebuilt
+          cp dumped_images/dtbo.img prebuilt/dtbo.img
           
-          cp dumped_images/dtbo.img device/xiaomi/air/prebuilt/dtbo.img
+          echo "2. Unpacking Boot for Kernel..."
           cd dumped_images
           magiskboot unpack boot.img
-          cp kernel ../device/xiaomi/air/prebuilt/kernel
-          cd ..
+          cp kernel ../prebuilt/kernel
+          
+          echo "3. Unpacking Vendor_Boot for .ko Modules..."
+          magiskboot unpack vendor_boot.img
+          mkdir ramdisk_unpacked
+          cd ramdisk_unpacked
+          cat ../ramdisk.cpio | cpio -idmv || true
+          
+          echo "4. Copying matching Modules and Firmware to device tree..."
+          # Grab .ko modules
+          mkdir -p ../../recovery/root/lib/modules
+          rm -rf ../../recovery/root/lib/modules/*
+          cp -r lib/modules/* ../../recovery/root/lib/modules/ || true
+          
+          # Grab .bin/.img firmware (Touchscreen configs)
+          mkdir -p ../../recovery/root/vendor/firmware
+          cp -r lib/firmware/* ../../recovery/root/vendor/firmware/ 2>/dev/null || true
+          cp -r vendor/firmware/* ../../recovery/root/vendor/firmware/ 2>/dev/null || true
+          cd ../../
 
-      - name: Extract & Commit Prebuilts
+      - name: Commit Prebuilts and Modules
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add device/xiaomi/air/prebuilt/
-          git commit -m "Auto-commit extracted HyperOS 2 kernel and dtbo for air" || true
+          git add prebuilt/
+          git add recovery/root/lib/modules/
+          git add recovery/root/vendor/firmware/ || true
+          git commit -m "🦊 Auto-commit: Extracted HyperOS 2 kernel, dtbo, modules, and firmware" || true
           git push || true
