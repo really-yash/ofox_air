@@ -5,10 +5,10 @@
 #
 
 # Device Info
-export TARGET_DEVICE="tornado"
-export FOX_TARGET_DEVICES="tornado"
-export TARGET_DEVICE_ALT="tornado"
-export OF_MAINTAINER="heppysingh"
+export TARGET_DEVICE="air"
+export FOX_TARGET_DEVICES="air"
+export TARGET_DEVICE_ALT="air"
+export OF_MAINTAINER="Yash"
 
 # Target Architecture
 export TARGET_ARCH="arm64"
