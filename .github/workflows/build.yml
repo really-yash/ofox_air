@@ -82,9 +82,6 @@ jobs:
         run: |
           cd /tmp/fox
           
-          echo "Patching mkbootimg.py for Android 12.1 vendor_boot Header v4 compatibility..."
-          curl -sSL "https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-21.0/mkbootimg.py" -o system/tools/mkbootimg/mkbootimg.py
-          
           export ALLOW_MISSING_DEPENDENCIES=true
           export FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER=1
           export LC_ALL="C"
