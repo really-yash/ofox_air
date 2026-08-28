@@ -60,7 +60,7 @@ jobs:
 
       - name: Sync OrangeFox Sources
         run: |
-          git config --global user.name "OrangeFox Builder"
+          git config --global user.name "Yash"
           git config --global user.email "builder@orangefox.tech"
           git config --global color.ui true
 
@@ -97,7 +97,7 @@ jobs:
           lunch ${{ github.event.inputs.BUILD_TARGET || 'fox_air-eng' }}
           
           echo "=== Building vendorbootimage ==="
-          mka vendorbootimage -j$(nproc --all)
+          mka vendorbootimage -j2
 
       - name: Show Build Output
         if: always()
