@@ -15,13 +15,13 @@ on:
       BUILD_TARGET:
         description: 'Build Target'
         required: true
-        default: 'fox_tornado-eng'
+        default: 'fox_air-eng'
         type: choice
         options:
-          - 'fox_tornado-eng'
-          - 'orangefox_tornado-eng'
-          - 'omni_tornado-eng'
-          - 'twrp_tornado-eng'
+          - 'fox_air-eng'
+          - 'orangefox_air-eng'
+          - 'omni_air-eng'
+          - 'twrp_air-eng'
 
 jobs:
   build:
@@ -72,27 +72,37 @@ jobs:
 
       - name: Copy Device Tree
         run: |
-          mkdir -p /tmp/fox/device/xiaomi/tornado
+          mkdir -p /tmp/fox/device/xiaomi/air
           rsync -a \
             --exclude=.git \
             --exclude=.github \
-            ./ /tmp/fox/device/xiaomi/tornado/
+            ./ /tmp/fox/device/xiaomi/air/
 
       - name: Build OrangeFox Recovery
         run: |
           cd /tmp/fox
+          
+          echo "Patching mkbootimg.py for Android 12.1 vendor_boot Header v4 compatibility..."
+          curl -sSL "https://raw.githubusercontent.com/LineageOS/android_system_tools_mkbootimg/lineage-21.0/mkbootimg.py" -o system/tools/mkbootimg/mkbootimg.py
+          
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export FOX_USE_TWRP_RECOVERY_IMAGE_BUILDER=1
+          export LC_ALL="C"
+          
           set +e
           source build/envsetup.sh
           set -e
-          echo "=== Lunching target: ${{ github.event.inputs.BUILD_TARGET || 'fox_tornado-eng' }} ==="
-          lunch ${{ github.event.inputs.BUILD_TARGET || 'fox_tornado-eng' }}
+          
+          echo "=== Lunching target: ${{ github.event.inputs.BUILD_TARGET || 'fox_air-eng' }} ==="
+          lunch ${{ github.event.inputs.BUILD_TARGET || 'fox_air-eng' }}
+          
           echo "=== Building vendorbootimage ==="
-          mka vendorbootimage
+          mka vendorbootimage -j$(nproc --all)
 
       - name: Show Build Output
         if: always()
         run: |
-          find /tmp/fox/out/target/product/tornado -maxdepth 2 -type f || true
+          find /tmp/fox/out/target/product/air -maxdepth 2 -type f || true
 
       - name: Fix Permissions
         if: always()
@@ -104,13 +114,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: OrangeFox-tornado
+          name: OrangeFox-air
           if-no-files-found: warn
           path: |
-            /tmp/fox/out/target/product/tornado/OrangeFox*.zip
-            /tmp/fox/out/target/product/tornado/OrangeFox*.img
-            /tmp/fox/out/target/product/tornado/vendor_boot.img
-            /tmp/fox/out/target/product/tornado/vendorboot.img
-            /tmp/fox/out/target/product/tornado/vendor_ramdisk_recovery.cpio
-            /tmp/fox/out/target/product/tornado/recovery.img
-            /tmp/fox/out/target/product/tornado/boot.img
+            /tmp/fox/out/target/product/air/OrangeFox*.zip
+            /tmp/fox/out/target/product/air/OrangeFox*.img
+            /tmp/fox/out/target/product/air/vendor_boot.img
+            /tmp/fox/out/target/product/air/vendorboot.img
+            /tmp/fox/out/target/product/air/vendor_ramdisk_recovery.cpio
+            /tmp/fox/out/target/product/air/recovery.img
+            /tmp/fox/out/target/product/air/boot.img
