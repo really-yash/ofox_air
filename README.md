@@ -1,35 +1,27 @@
-# OrangeFox Recovery Project for Redmi 15C 5G (tornado)
+# OrangeFox Recovery Project for Redmi 13C 5G (air)
 
-Device tree for building OrangeFox Recovery for **Redmi 15C 5G** (and variants).
+Device tree for building OrangeFox Recovery for **Redmi 13C 5G** (and variants).
 
-```
-#
-# Copyright (C) 2024-2026 The OrangeFox Recovery Project
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-```
+​Copyright (C) 2024-2026 The OrangeFox Recovery Project
+​
+​SPDX-License-Identifier: Apache-2.0
+
 
 ## Device Specifications
 
 | Feature | Specification |
 | :--- | :--- |
-| **Device** | Redmi 15C 5G / Redmi 15R 5G / Poco C85 5G |
-| **Codename** | `tornado` |
-| **SoC** | MediaTek MT6835 (Dimensity 6300) |
+| **Device** | Redmi 13C 5G / POCO M6 5G |
+| **Codename** | `air` |
+| **SoC** | MediaTek MT6835 (Dimensity 6100+) |
 | **Architecture** | ARM64 (64-bit) |
-| **Display** | 720 x 1640 (20.5:9), 90Hz/120Hz IPS LCD |
-| **Storage & RAM** | UFS / eMMC, 4GB / 6GB / 8GB |
+| **Display** | 720 x 1600 (20:9), 90Hz IPS LCD |
+| **Storage & RAM** | UFS 2.2 / eMMC 5.1, 4GB / 6GB / 8GB |
 | **Partition Scheme** | Virtual A/B (Dynamic Partitions, Boot Header v4) |
 | **Recovery Location** | `vendor_boot` partition (`vendor_boot-as-recovery`) |
-| **Shipped Android** | Android 15 / 16 |
-
-
-
-
-
-
+| **Shipped Android** | Android 13 / 14 / 15 |
 
 ---
+
 ## Maintainer
-- **Maintainer**: @heppysingh
+- **Maintainer**: Yash
