@@ -17,14 +17,14 @@ $(call inherit-product-if-exists, vendor/twrp/config/common.mk)
 
 # Device identifier
 BOARD_VENDOR := xiaomi
-PRODUCT_DEVICE := tornado
-PRODUCT_NAME := orangefox_tornado
+PRODUCT_DEVICE := air
+PRODUCT_NAME := orangefox_air
 PRODUCT_BRAND := Redmi
-PRODUCT_MODEL := Redmi 15C 5G
+PRODUCT_MODEL := Redmi 13C 5G
 PRODUCT_MANUFACTURER := Xiaomi
 
 # Device path for OEM device tree
-DEVICE_PATH := device/xiaomi/tornado
+DEVICE_PATH := device/xiaomi/air
 
 # Inherit from hardware-specific part of the product configuration
 $(call inherit-product, $(DEVICE_PATH)/device.mk)
