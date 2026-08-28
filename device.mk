@@ -86,12 +86,16 @@ TW_RECOVERY_ADDITIONAL_RELINK_LIBRARY_FILES += \
     $(TARGET_OUT_SHARED_LIBRARIES)/android.hardware.vibrator-V1-ndk_platform.so \
     $(TARGET_OUT_SHARED_LIBRARIES)/libion.so
 
-# Keymint / Gatekeeper / TEE blobs - pulled from stock tornado device
+# Exclude problematic Rust/AIDL security services from recovery image packaging to prevent compilation errors
+PRODUCT_PACKAGES += \
+    -- \
+    android.hardware.security.keymint-service.mitee \
+    android.hardware.gatekeeper@1.0-service
+
+# Keymint / Gatekeeper / TEE blobs - pulled from stock air device
 PRODUCT_COPY_FILES += \
     $(DEVICE_PATH)/recovery/root/debug_boot.sh:$(TARGET_COPY_OUT_RECOVERY)/root/debug_boot.sh \
     $(DEVICE_PATH)/recovery/root/vendor/bin/tee-supplicant:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/bin/tee-supplicant \
-    $(DEVICE_PATH)/recovery/root/vendor/bin/hw/android.hardware.security.keymint@2.0-service.mitee:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/bin/hw/android.hardware.security.keymint@2.0-service.mitee \
-    $(DEVICE_PATH)/recovery/root/vendor/bin/hw/android.hardware.gatekeeper@1.0-service:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/bin/hw/android.hardware.gatekeeper@1.0-service \
     $(DEVICE_PATH)/recovery/root/vendor/lib64/libTEECommon.so:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/lib64/libTEECommon.so \
     $(DEVICE_PATH)/recovery/root/vendor/lib64/libteecli.so:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/lib64/libteecli.so \
     $(DEVICE_PATH)/recovery/root/vendor/lib64/libkeymint.so:$(TARGET_COPY_OUT_RECOVERY)/root/vendor/lib64/libkeymint.so \
