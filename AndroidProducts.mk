@@ -1,19 +1,11 @@
-#
-# Copyright (C) 2017-2023 The Android Open Source Project
-# Copyright (C) 2014-2023 The Team Win LLC
-# Copyright (C) 2024-2026 The OrangeFox Recovery Project
-#
-# SPDX-License-Identifier: Apache-2.0
-#
-
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/fox_tornado.mk \
-    $(LOCAL_DIR)/orangefox_tornado.mk \
-    $(LOCAL_DIR)/omni_tornado.mk \
-    $(LOCAL_DIR)/twrp_tornado.mk
+    $(LOCAL_DIR)/fox_air.mk \
+    $(LOCAL_DIR)/orangefox_air.mk \
+    $(LOCAL_DIR)/omni_air.mk \
+    $(LOCAL_DIR)/twrp_air.mk
 
 COMMON_LUNCH_CHOICES := \
-    fox_tornado-eng \
-    orangefox_tornado-eng \
-    omni_tornado-eng \
-    twrp_tornado-eng
+    fox_air-eng \
+    orangefox_air-eng \
+    omni_air-eng \
+    twrp_air-eng
