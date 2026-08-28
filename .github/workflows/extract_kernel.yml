@@ -35,7 +35,7 @@ jobs:
           
           echo "1. Moving DTBO..."
           mkdir -p prebuilt
-          cp dumped_images/dtbo.img prebuilt/dtbo.img
+          cp dumped_images/dtbo.img prebuilt/dtbo.img || true
           
           echo "2. Unpacking Boot for Kernel..."
           cd dumped_images
@@ -46,18 +46,22 @@ jobs:
           magiskboot unpack vendor_boot.img
           mkdir ramdisk_unpacked
           cd ramdisk_unpacked
-          cat ../ramdisk.cpio | cpio -idmv || true
+          # Use wildcard to catch both ramdisk.cpio and vendor_ramdisk.cpio
+          cat ../*ramdisk*.cpio | cpio -idmv || true
           
           echo "4. Copying matching Modules and Firmware to device tree..."
-          # Grab .ko modules
           mkdir -p ../../recovery/root/lib/modules
-          rm -rf ../../recovery/root/lib/modules/*
-          cp -r lib/modules/* ../../recovery/root/lib/modules/ || true
-          
-          # Grab .bin/.img firmware (Touchscreen configs)
           mkdir -p ../../recovery/root/vendor/firmware
-          cp -r lib/firmware/* ../../recovery/root/vendor/firmware/ 2>/dev/null || true
-          cp -r vendor/firmware/* ../../recovery/root/vendor/firmware/ 2>/dev/null || true
+          
+          # Bulletproof search: finds all matching files anywhere in the ramdisk
+          find . -name "*.ko" -exec cp {} ../../recovery/root/lib/modules/ \;
+          find . -name "*.bin" -exec cp {} ../../recovery/root/vendor/firmware/ \;
+          find . -name "*.img" -exec cp {} ../../recovery/root/vendor/firmware/ \;
+          
+          # Force Git to track the directories
+          touch ../../recovery/root/lib/modules/.gitkeep
+          touch ../../recovery/root/vendor/firmware/.gitkeep
+          
           cd ../../
 
       - name: Commit Prebuilts and Modules
@@ -66,6 +70,6 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add prebuilt/
           git add recovery/root/lib/modules/
-          git add recovery/root/vendor/firmware/ || true
-          git commit -m "🦊 Auto-commit: Extracted HyperOS 2 kernel, dtbo, modules, and firmware" || true
+          git add recovery/root/vendor/firmware/
+          git commit -m "🦊 Auto-commit: Extracted HyperOS 2 kernel, modules, and firmware" || true
           git push || true
