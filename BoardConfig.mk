@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-DEVICE_PATH := device/xiaomi/tornado
+DEVICE_PATH := device/xiaomi/air
 
 # For building with minimal manifest
 ALLOW_MISSING_DEPENDENCIES := true
@@ -39,8 +39,8 @@ TARGET_IS_64_BIT := true
 TARGET_RECOVERY_NO_APEX := true
 
 # Assertions & Board Name
-TARGET_OTA_ASSERT_DEVICE := tornado
-TARGET_BOOTLOADER_BOARD_NAME := tornado
+TARGET_OTA_ASSERT_DEVICE := air
+TARGET_BOOTLOADER_BOARD_NAME := air
 TARGET_NO_BOOTLOADER := true
 TARGET_USES_UEFI := true
 
@@ -112,8 +112,8 @@ TARGET_USERIMAGES_USE_F2FS := true
 TARGET_SYSTEM_PROP += $(DEVICE_PATH)/system.prop
 
 # Init
-TARGET_INIT_VENDOR_LIB := //$(DEVICE_PATH):libinit_tornado
-TARGET_RECOVERY_DEVICE_MODULES := libinit_tornado
+TARGET_INIT_VENDOR_LIB := //$(DEVICE_PATH):libinit_air
+TARGET_RECOVERY_DEVICE_MODULES := libinit_air
 TARGET_PLATFORM_DEVICE_BASE := /devices/soc/
 
 # Recovery
@@ -197,9 +197,9 @@ TW_DEVICE_VERSION := @heppysingh
 # -----------------------------------------------------------------------------
 
 # Maintainer & Identity
-OF_MAINTAINER := heppysingh
-TARGET_DEVICE_ALT := tornado
-FOX_TARGET_DEVICES := tornado
+OF_MAINTAINER := Yash
+TARGET_DEVICE_ALT := air
+FOX_TARGET_DEVICES := air
 
 # Target Architecture
 TARGET_ARCH := arm64
