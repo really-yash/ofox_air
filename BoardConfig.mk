@@ -8,9 +8,6 @@
 
 DEVICE_PATH := device/xiaomi/air
 
-# For building with minimal manifest
-ALLOW_MISSING_DEPENDENCIES := true
-
 # Build Hacks
 BUILD_BROKEN_DUP_RULES := true
 BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
@@ -190,7 +187,7 @@ TWRP_INCLUDE_LOGCAT := true
 TW_SUPPORT_INPUT_AIDL_HAPTICS := true
 TW_USE_LEGACY_BATTERY_SERVICES := true
 TW_LOAD_VENDOR_BOOT_MODULES := true
-TW_DEVICE_VERSION := @heppysingh
+TW_DEVICE_VERSION := Yash
 
 # -----------------------------------------------------------------------------
 # OrangeFox Recovery Project Build Variables
@@ -245,3 +242,11 @@ OF_FBE_METADATA_MOUNT_IGNORE := 1
 OF_ENABLE_LPTOOLS := 1
 OF_ENABLE_ALL_PARTITION_TOOLS := 1
 OF_QUICK_BACKUP_LIST := /boot;/data;/super;
+
+# Rust / AIDL Compiler Bypass
+BOARD_VENDOR_SEPOLICY_DIRS += 
+PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
+ALLOW_MISSING_DEPENDENCIES := true
+TARGET_OTA_ALLOW_NON_AB := false
+RECOVERY_SDK_VERSION := current
+BOARD_CANT_BUILD_RECOVERY_BOOT_IMAGE := false
