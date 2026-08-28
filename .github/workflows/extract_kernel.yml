@@ -13,9 +13,17 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker system prune -af || true
+
       - name: Install Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y aria2 p7zip-full cpio lz4
+          sudo apt-get update && sudo apt-get install -y aria2 p7zip-full cpio lz4 erofs-utils
           wget https://github.com/ssut/payload-dumper-go/releases/download/1.2.2/payload-dumper-go_1.2.2_linux_amd64.tar.gz
           tar -xf payload-dumper-go_1.2.2_linux_amd64.tar.gz
           sudo cp payload-dumper-go /usr/local/bin/
@@ -28,11 +36,13 @@ jobs:
         run: |
           aria2c -x 16 -s 16 -k 1M --file-allocation=none -o rom.zip "https://bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.aliyuncs.com/OS2.0.208.0.VGQINXM/air_in_global-ota_full-OS2.0.208.0.VGQINXM-user-15.0-93391672cc.zip"
           unzip -q rom.zip payload.bin
+          rm -f rom.zip
 
       - name: Dump Partitions & Extract Kernel + Modules
         run: |  
-          # Added 'vendor' to the dump list to grab the firmware
+          set +e
           payload-dumper-go -o dumped_images -p boot,dtbo,vendor_boot,vendor_dlkm,vendor payload.bin  
+          rm -f payload.bin
           
           mkdir -p prebuilt
           cp dumped_images/dtbo.img prebuilt/dtbo.img || true
@@ -42,29 +52,36 @@ jobs:
           magiskboot unpack boot.img
           cp kernel ../prebuilt/kernel || true
           
-          echo "2. Creating Module and Firmware Directories..."
-          mkdir -p ../../recovery/root/vendor/lib/modules/1.1
-          mkdir -p ../../recovery/root/vendor/firmware
+          echo "2. Preparing Target Directories..."
+          mkdir -p ../recovery/root/vendor/lib/modules/1.1
+          mkdir -p ../recovery/root/vendor/firmware
           
           echo "3. Ripping Modules from vendor_dlkm..."
           sudo mkdir -p /mnt/vendor_dlkm
-          sudo mount -o ro -t erofs vendor_dlkm.img /mnt/vendor_dlkm || sudo mount -o ro -t ext4 vendor_dlkm.img /mnt/vendor_dlkm || true
-          find /mnt/vendor_dlkm -type f -name "*.ko" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
-          find /mnt/vendor_dlkm -type f -name "modules.load*" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
-          sudo umount /mnt/vendor_dlkm || true
+          sudo mount -o loop,ro vendor_dlkm.img /mnt/vendor_dlkm 2>/dev/null || sudo mount -o loop,ro -t erofs vendor_dlkm.img /mnt/vendor_dlkm 2>/dev/null
           
-          # Clone modules into the 1.1 folder just to be safe
-          cp ../../recovery/root/vendor/lib/modules/*.ko ../../recovery/root/vendor/lib/modules/1.1/ 2>/dev/null || true
-          cp ../../recovery/root/vendor/lib/modules/modules.load* ../../recovery/root/vendor/lib/modules/1.1/ 2>/dev/null || true
+          find /mnt/vendor_dlkm -type f -name "*.ko" -exec cp {} ../recovery/root/vendor/lib/modules/ \; 2>/dev/null
+          find /mnt/vendor_dlkm -type f -name "modules.load*" -exec cp {} ../recovery/root/vendor/lib/modules/ \; 2>/dev/null
+          sudo umount /mnt/vendor_dlkm 2>/dev/null
+          
+          # Clone modules into the 1.1 folder
+          cp -r ../recovery/root/vendor/lib/modules/*.ko ../recovery/root/vendor/lib/modules/1.1/ 2>/dev/null || true
+          cp -r ../recovery/root/vendor/lib/modules/modules.load* ../recovery/root/vendor/lib/modules/1.1/ 2>/dev/null || true
           
           echo "4. Ripping Firmware from vendor.img..."
           sudo mkdir -p /mnt/vendor
-          sudo mount -o ro -t erofs vendor.img /mnt/vendor || sudo mount -o ro -t ext4 vendor.img /mnt/vendor || true
-          # Aggressive search for all touchscreen firmware files
-          find /mnt/vendor/firmware -type f | grep -iE 'ts_|touch|focal|novatek|goodix|omnivision|synaptics|truly|boe' | grep -iE '\.bin$|\.img$|\.fw$|\.ini$' | xargs -I {} cp {} ../../recovery/root/vendor/firmware/ || true
-          sudo umount /mnt/vendor || true
+          sudo mount -o loop,ro vendor.img /mnt/vendor 2>/dev/null || sudo mount -o loop,ro -t erofs vendor.img /mnt/vendor 2>/dev/null
           
-          cd ../../
+          # Universal scan over the whole vendor mount for touchscreen firmware
+          find /mnt/vendor -type f 2>/dev/null | grep -iE 'ts_|touch|focal|novatek|goodix|omnivision|synaptics|truly|boe' | grep -iE '\.bin$|\.img$|\.fw$|\.ini$' | xargs -I {} cp {} ../recovery/root/vendor/firmware/ 2>/dev/null
+          sudo umount /mnt/vendor 2>/dev/null
+          
+          cd ..
+          rm -rf dumped_images
+          
+          # Remove placeholder gitkeep if files exist
+          [ "$(ls -A recovery/root/vendor/lib/modules/*.ko 2>/dev/null)" ] && rm -f recovery/root/vendor/lib/modules/.gitkeep
+          [ "$(ls -A recovery/root/vendor/firmware/* 2>/dev/null)" ] && rm -f recovery/root/vendor/firmware/.gitkeep
 
       - name: Commit Prebuilts and Modules
         run: |
