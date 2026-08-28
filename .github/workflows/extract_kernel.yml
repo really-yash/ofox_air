@@ -31,7 +31,8 @@ jobs:
 
       - name: Dump Partitions & Extract Kernel + Modules
         run: |  
-          payload-dumper-go -o dumped_images -p boot,dtbo,vendor_boot,vendor_dlkm payload.bin  
+          # Added 'vendor' to the dump list to grab the firmware
+          payload-dumper-go -o dumped_images -p boot,dtbo,vendor_boot,vendor_dlkm,vendor payload.bin  
           
           mkdir -p prebuilt
           cp dumped_images/dtbo.img prebuilt/dtbo.img || true
@@ -41,50 +42,27 @@ jobs:
           magiskboot unpack boot.img
           cp kernel ../prebuilt/kernel || true
           
-          echo "2. Unpacking Vendor_Boot for .ko Modules..."
-          magiskboot unpack vendor_boot.img
-          mkdir -p ramdisk_unpacked
-          cd ramdisk_unpacked
-          
-          echo "3. Decompressing and extracting all ramdisk files..."
-          for f in ../*.cpio*; do
-            if [ -f "$f" ]; then
-              echo "Processing $f..."
-              if file "$f" | grep -qi "lz4"; then
-                echo "LZ4 Compression Detected! Decompressing..."
-                lz4 -d -c "$f" | cpio -idmv || true
-              elif file "$f" | grep -qi "gzip"; then
-                echo "GZIP Compression Detected! Decompressing..."
-                gzip -d -c "$f" | cpio -idmv || true
-              else
-                echo "Standard CPIO Detected!"
-                cat "$f" | cpio -idmv || true
-              fi
-            fi
-          done
-          
-          echo "4. Copying matching Modules and Firmware to device tree..."
-          # CORRECTED PATHS: Now using vendor/lib/modules
-          mkdir -p ../../recovery/root/vendor/lib/modules
+          echo "2. Creating Module and Firmware Directories..."
+          mkdir -p ../../recovery/root/vendor/lib/modules/1.1
           mkdir -p ../../recovery/root/vendor/firmware
           
-          find . -type f -name "*.ko" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
-          find . -type f -name "modules.load*" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
+          echo "3. Ripping Modules from vendor_dlkm..."
+          sudo mkdir -p /mnt/vendor_dlkm
+          sudo mount -o ro -t erofs vendor_dlkm.img /mnt/vendor_dlkm || sudo mount -o ro -t ext4 vendor_dlkm.img /mnt/vendor_dlkm || true
+          find /mnt/vendor_dlkm -type f -name "*.ko" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
+          find /mnt/vendor_dlkm -type f -name "modules.load*" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
+          sudo umount /mnt/vendor_dlkm || true
           
-          find . -type f | grep -iE 'ts_|touch|focal|novatek|goodix|omnivision|synaptics' | grep -iE '\.bin$|\.img$|\.fw$' | xargs -I {} cp {} ../../recovery/root/vendor/firmware/ || true
+          # Clone modules into the 1.1 folder just to be safe
+          cp ../../recovery/root/vendor/lib/modules/*.ko ../../recovery/root/vendor/lib/modules/1.1/ 2>/dev/null || true
+          cp ../../recovery/root/vendor/lib/modules/modules.load* ../../recovery/root/vendor/lib/modules/1.1/ 2>/dev/null || true
           
-          # FALLBACK: If modules aren't in vendor_boot, forcefully mount vendor_dlkm and rip them!
-          if [ $(find ../../recovery/root/vendor/lib/modules/ -type f -name "*.ko" | wc -l) -eq 0 ]; then
-            echo "❌ Modules NOT found in vendor_boot! Force mounting vendor_dlkm as fallback..."
-            sudo mkdir -p /mnt/vendor_dlkm
-            sudo mount -o ro -t erofs ../vendor_dlkm.img /mnt/vendor_dlkm || sudo mount -o ro -t ext4 ../vendor_dlkm.img /mnt/vendor_dlkm || true
-            find /mnt/vendor_dlkm -type f -name "*.ko" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
-            find /mnt/vendor_dlkm -type f -name "modules.load*" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
-            sudo umount /mnt/vendor_dlkm || true
-          fi
-          
-          touch ../../recovery/root/vendor/lib/modules/.gitkeep
-          touch ../../recovery/root/vendor/firmware/.gitkeep
+          echo "4. Ripping Firmware from vendor.img..."
+          sudo mkdir -p /mnt/vendor
+          sudo mount -o ro -t erofs vendor.img /mnt/vendor || sudo mount -o ro -t ext4 vendor.img /mnt/vendor || true
+          # Aggressive search for all touchscreen firmware files
+          find /mnt/vendor/firmware -type f | grep -iE 'ts_|touch|focal|novatek|goodix|omnivision|synaptics|truly|boe' | grep -iE '\.bin$|\.img$|\.fw$|\.ini$' | xargs -I {} cp {} ../../recovery/root/vendor/firmware/ || true
+          sudo umount /mnt/vendor || true
           
           cd ../../
 
@@ -95,5 +73,5 @@ jobs:
           git add prebuilt/
           git add recovery/root/vendor/lib/modules/
           git add recovery/root/vendor/firmware/
-          git commit -m "🦊 Auto-commit: Extracted HyperOS 2 kernel, modules, and firmware" || true
+          git commit -m "🦊 Auto-commit: Extracted HyperOS 2 kernel, modules (with 1.1), and firmware" || true
           git push || true
