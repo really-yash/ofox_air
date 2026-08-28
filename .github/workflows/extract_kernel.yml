@@ -31,35 +31,59 @@ jobs:
 
       - name: Dump Partitions & Extract Kernel + Modules
         run: |  
-          payload-dumper-go -o dumped_images -p boot,dtbo,vendor_boot payload.bin  
+          payload-dumper-go -o dumped_images -p boot,dtbo,vendor_boot,vendor_dlkm payload.bin  
           
-          echo "1. Moving DTBO..."
           mkdir -p prebuilt
           cp dumped_images/dtbo.img prebuilt/dtbo.img || true
           
-          echo "2. Unpacking Boot for Kernel..."
           cd dumped_images
+          echo "1. Unpacking Boot for Kernel..."
           magiskboot unpack boot.img
-          cp kernel ../prebuilt/kernel
+          cp kernel ../prebuilt/kernel || true
           
-          echo "3. Unpacking Vendor_Boot for .ko Modules..."
+          echo "2. Unpacking Vendor_Boot for .ko Modules..."
           magiskboot unpack vendor_boot.img
-          mkdir ramdisk_unpacked
+          mkdir -p ramdisk_unpacked
           cd ramdisk_unpacked
-          # Use wildcard to catch both ramdisk.cpio and vendor_ramdisk.cpio
-          cat ../*ramdisk*.cpio | cpio -idmv || true
+          
+          echo "3. Decompressing and extracting all ramdisk files..."
+          for f in ../*.cpio*; do
+            if [ -f "$f" ]; then
+              echo "Processing $f..."
+              if file "$f" | grep -qi "lz4"; then
+                echo "LZ4 Compression Detected! Decompressing..."
+                lz4 -d -c "$f" | cpio -idmv || true
+              elif file "$f" | grep -qi "gzip"; then
+                echo "GZIP Compression Detected! Decompressing..."
+                gzip -d -c "$f" | cpio -idmv || true
+              else
+                echo "Standard CPIO Detected!"
+                cat "$f" | cpio -idmv || true
+              fi
+            fi
+          done
           
           echo "4. Copying matching Modules and Firmware to device tree..."
-          mkdir -p ../../recovery/root/lib/modules
+          # CORRECTED PATHS: Now using vendor/lib/modules
+          mkdir -p ../../recovery/root/vendor/lib/modules
           mkdir -p ../../recovery/root/vendor/firmware
           
-          # Bulletproof search: finds all matching files anywhere in the ramdisk
-          find . -name "*.ko" -exec cp {} ../../recovery/root/lib/modules/ \;
-          find . -name "*.bin" -exec cp {} ../../recovery/root/vendor/firmware/ \;
-          find . -name "*.img" -exec cp {} ../../recovery/root/vendor/firmware/ \;
+          find . -type f -name "*.ko" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
+          find . -type f -name "modules.load*" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
           
-          # Force Git to track the directories
-          touch ../../recovery/root/lib/modules/.gitkeep
+          find . -type f | grep -iE 'ts_|touch|focal|novatek|goodix|omnivision|synaptics' | grep -iE '\.bin$|\.img$|\.fw$' | xargs -I {} cp {} ../../recovery/root/vendor/firmware/ || true
+          
+          # FALLBACK: If modules aren't in vendor_boot, forcefully mount vendor_dlkm and rip them!
+          if [ $(find ../../recovery/root/vendor/lib/modules/ -type f -name "*.ko" | wc -l) -eq 0 ]; then
+            echo "❌ Modules NOT found in vendor_boot! Force mounting vendor_dlkm as fallback..."
+            sudo mkdir -p /mnt/vendor_dlkm
+            sudo mount -o ro -t erofs ../vendor_dlkm.img /mnt/vendor_dlkm || sudo mount -o ro -t ext4 ../vendor_dlkm.img /mnt/vendor_dlkm || true
+            find /mnt/vendor_dlkm -type f -name "*.ko" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
+            find /mnt/vendor_dlkm -type f -name "modules.load*" -exec cp {} ../../recovery/root/vendor/lib/modules/ \;
+            sudo umount /mnt/vendor_dlkm || true
+          fi
+          
+          touch ../../recovery/root/vendor/lib/modules/.gitkeep
           touch ../../recovery/root/vendor/firmware/.gitkeep
           
           cd ../../
@@ -69,7 +93,7 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add prebuilt/
-          git add recovery/root/lib/modules/
+          git add recovery/root/vendor/lib/modules/
           git add recovery/root/vendor/firmware/
           git commit -m "🦊 Auto-commit: Extracted HyperOS 2 kernel, modules, and firmware" || true
           git push || true
