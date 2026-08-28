@@ -154,3 +154,6 @@ PRODUCT_PROPERTY_OVERRIDES += \
 # Use /product/etc/fstab.postinstall to mount system_other.
 PRODUCT_PRODUCT_PROPERTIES += \
     ro.postinstall.fstab.prefix=/system
+
+# Bypass VINTF checks for recovery
+PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
