@@ -1,0 +1,52 @@
+name: Dump vendor_boot.img
+
+on:
+  workflow_dispatch: # Allows you to run this manually
+
+jobs:
+  dump_image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python & Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lz4 cpio wget
+
+      - name: Download AOSP Unpack Tool
+        run: |
+          # Download Google's official unpack tool
+          wget https://raw.githubusercontent.com/cfig/Android_boot_image_editor/master/unpack_bootimg.py
+          chmod +x unpack_bootimg.py
+
+      - name: Unpack vendor_boot.img
+        run: |
+          mkdir -p extracted
+          echo "Extracting Image Header..."
+          # This command dumps the image and saves the text output (which has your BoardConfig data)
+          python3 unpack_bootimg.py --boot_img vendor_boot.img --out extracted > extracted/BoardConfig_Offsets.txt
+          
+      - name: Unpack Ramdisk (Files & Folders)
+        run: |
+          cd extracted
+          mkdir -p ramdisk_files
+          cd ramdisk_files
+          
+          echo "Decompressing Ramdisk..."
+          # MTK devices usually use LZ4 compression. We decompress it, then unpack the CPIO archive.
+          if [ -f ../vendor_ramdisk00 ]; then
+            lz4 -d ../vendor_ramdisk00 ramdisk.cpio
+            cpio -i -m -F ramdisk.cpio 2>/dev/null || true
+            rm ramdisk.cpio
+          fi
+          
+          echo "Ramdisk successfully extracted!"
+
+      - name: Upload Extracted Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: Extracted_Vendor_Boot
+          path: extracted/
