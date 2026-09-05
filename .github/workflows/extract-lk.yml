@@ -1,0 +1,54 @@
+name: Extract LK Partition
+
+on:
+  workflow_dispatch:
+    inputs:
+      rom_url:
+        description: 'Direct link to the MIUI/HyperOS Recovery ZIP'
+        required: true
+        default: 'https://bkt-sgp-miui-ota-update-alisgp.oss-ap-southeast-1.aliyuncs.com/V14.0.11.0.TGQINXM/miui_AIRINGlobal_V14.0.11.0.TGQINXM_53fbfcf746_13.0.zip'
+
+jobs:
+  extract_and_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # CRITICAL: Allows the bot to upload files to your Releases page
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+
+      - name: Download payload-dumper-go
+        run: |
+          echo "Downloading payload-dumper-go..."
+          wget -q https://github.com/ssut/payload-dumper-go/releases/download/1.2.2/payload-dumper-go_1.2.2_linux_amd64.tar.gz
+          tar -zxvf payload-dumper-go_1.2.2_linux_amd64.tar.gz payload-dumper-go
+          chmod +x payload-dumper-go
+
+      - name: Download ROM
+        run: |
+          echo "Downloading ROM ZIP (this might take a minute)..."
+          wget -q "${{ github.event.inputs.rom_url }}" -O rom.zip
+
+      - name: Extract payload.bin
+        run: |
+          echo "Unzipping payload.bin..."
+          unzip -q rom.zip payload.bin
+
+      - name: Dump LK Partition
+        run: |
+          echo "Extracting LK image..."
+          ./payload-dumper-go -p lk payload.bin
+
+      - name: Upload to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: lk-dump-${{ github.run_id }}
+          name: "LK Partition Extraction"
+          body: "Automated extraction of the `lk` partition from the provided ROM link."
+          files: extracted_*/lk.img
